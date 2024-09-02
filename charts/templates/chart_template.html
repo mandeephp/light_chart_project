@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Chart</title>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        #chart { height: 400px; width: 100%; max-width: 800px; }
+        .controls { margin-bottom: 20px; }
+        .controls button { margin: 5px; padding: 10px 20px; border: none; background-color: #3b95d3; color: white; cursor: pointer; border-radius: 5px; }
+        .controls button.active { background-color: #052e47; }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button id="lineSeriesBtn" class="active">Line Series</button>
+        <button id="histogramSeriesBtn">Histogram Series</button>
+        <button id="toggleValue2Btn">Toggle Value2 Series</button>
+        <button id="toggleValue3Btn">Toggle Value3 Series</button>
+    </div>
+    <div id="chart"></div>
+
+    <script>
+        const chartData = {{ chart_data|safe }};
+        const chart = LightweightCharts.createChart(document.getElementById('chart'), { width: 800, height: 400 });
+
+        // Initial series for value1
+        let mainSeries = chart.addLineSeries({ color: 'blue' });
+        mainSeries.setData(chartData.value1);
+
+        let value2Series = null;
+        let value3Series = null;
+        let activeSeriesType = 'line';
+
+        // Switch series type
+        document.getElementById('lineSeriesBtn').addEventListener('click', () => {
+            switchSeries('line', chartData.value1);
+        });
+
+        document.getElementById('histogramSeriesBtn').addEventListener('click', () => {
+            switchSeries('histogram', chartData.value1);
+        });
+
+        // Toggle Value2 series
+        document.getElementById('toggleValue2Btn').addEventListener('click', () => {
+            if (value2Series) {
+                chart.removeSeries(value2Series);
+                value2Series = null;
+            } else {
+                value2Series = addSeriesForType(chartData.value2, 'red');
+            }
+        });
+
+        // Toggle Value3 series
+        document.getElementById('toggleValue3Btn').addEventListener('click', () => {
+            if (value3Series) {
+                chart.removeSeries(value3Series);
+                value3Series = null;
+            } else {
+                value3Series = addSeriesForType(chartData.value3, 'green');
+            }
+        });
+
+        function switchSeries(type, data) {
+            chart.removeSeries(mainSeries);
+            activeSeriesType = type;
+            mainSeries = addSeriesForType(data, 'blue');
+            updateActiveButton(type);
+        }
+
+        function addSeriesForType(data, color) {
+            let series;
+            if (activeSeriesType === 'line') {
+                series = chart.addLineSeries({ color: color });
+            } else if (activeSeriesType === 'histogram') {
+                series = chart.addHistogramSeries({ color: color });
+            }
+            series.setData(data);
+            return series;
+        }
+
+        function updateActiveButton(type) {
+            document.getElementById('lineSeriesBtn').classList.toggle('active', type === 'line');
+            document.getElementById('histogramSeriesBtn').classList.toggle('active', type === 'histogram');
+        }
+    </script>
+</body>
+</html>
