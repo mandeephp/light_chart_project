@@ -20,3 +20,4 @@ class ChartData(models.Model):
     class Meta:
         verbose_name_plural = 'Chart Data'
         managed = False
+        db_table = '20240826'

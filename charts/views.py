@@ -5,27 +5,26 @@ from django.shortcuts import render
 from charts.models import ChartData
 
 
-def chart_view(request):
-    # start_date = date(2024, 8, 1)  # Adjust the year if necessary
-    # end_date = date(2024, 8, 31)
-    # delta = timedelta(days=1)
-    #
-    # while start_date <= end_date:
-    #     ChartData.objects.create(
-    #         date=start_date,
-    #         value1=random.randint(0, 100),
-    #         value2=random.randint(0, 100),
-    #         value3=random.randint(0, 100)
-    #     )
-    #     start_date += delta
+from django.shortcuts import render
+from .models import ChartData
 
-    august_data = ChartData.objects.filter(date__month=8, date__year=2024).order_by('date')
+def chart_view(request):
+    # Query the ChartData model for data, ordering by date and time
+    chart_data = ChartData.objects.all().order_by('date', 'time')
 
     # Prepare data for the chart
-    chart_data = {
-        'value1': [{'time': data.date.strftime('%Y-%m-%d'), 'value': data.value1} for data in august_data],
-        'value2': [{'time': data.date.strftime('%Y-%m-%d'), 'value': data.value2} for data in august_data],
-        'value3': [{'time': data.date.strftime('%Y-%m-%d'), 'value': data.value3} for data in august_data],
+    chart_data_list = []
+    for data in chart_data:
+        chart_data_list.append({
+            'time': f'{data.date}T{data.time.strftime("%H:%M:%S")}Z',
+            'open': float(data.open),
+            'high': float(data.high),
+            'low': float(data.low),
+            'close': float(data.close)
+        })
+
+    context = {
+        'chart_data': chart_data_list
     }
 
-    return render(request, 'chart_template.html', {'chart_data': chart_data})
+    return render(request, 'chart_template.html', context=context)

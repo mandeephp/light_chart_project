@@ -1,90 +1,118 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Chart</title>
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <title>Chart</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.4.0/dist/lightweight-charts.standalone.production.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        #chart { height: 400px; width: 100%; max-width: 800px; }
-        .controls { margin-bottom: 20px; }
-        .controls button { margin: 5px; padding: 10px 20px; border: none; background-color: #3b95d3; color: white; cursor: pointer; border-radius: 5px; }
-        .controls button.active { background-color: #052e47; }
+        #chart {
+            position: relative;
+            width: 100%;
+            height: 500px;
+        }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <button id="lineSeriesBtn" class="active">Line Series</button>
-        <button id="histogramSeriesBtn">Histogram Series</button>
-        <button id="toggleValue2Btn">Toggle Value2 Series</button>
-        <button id="toggleValue3Btn">Toggle Value3 Series</button>
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <img src="{% static 'assets/images/QUANTX-LOGO.png' %}" alt="Company Logo">
+        </a>
     </div>
-    <div id="chart"></div>
+</nav>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-xl-10 col-lg-11 col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div id="chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        const chartData = {{ chart_data|safe }};
-        const chart = LightweightCharts.createChart(document.getElementById('chart'), { width: 800, height: 400 });
+// Sample data from Django view
+const chartData = {{ chart_data|safe }};
+console.log(chartData[0].time, new Date(`${chartData[0].time}`).getTime() / 1000);
 
-        // Initial series for value1
-        let mainSeries = chart.addLineSeries({ color: 'blue' });
-        mainSeries.setData(chartData.value1);
+// Convert time-only format to timestamps
+const data = chartData.map(item => ({
+    time: new Date(`${item.time}`).getTime() / 1000,
+    open: item.open,
+    high: item.high,
+    low: item.low,
+    close: item.close
+}));
 
-        let value2Series = null;
-        let value3Series = null;
-        let activeSeriesType = 'line';
+// Create chart with responsive container
+const chartContainer = document.getElementById('chart');
+const chart = LightweightCharts.createChart(chartContainer, {
+    width: chartContainer.clientWidth,
+    height: 500,
+});
 
-        // Switch series type
-        document.getElementById('lineSeriesBtn').addEventListener('click', () => {
-            switchSeries('line', chartData.value1);
+// Adjust the chart width dynamically
+window.addEventListener('resize', () => {
+    chart.resize(chartContainer.clientWidth, 500);
+});
+
+// Add candlestick series with specified colors
+const candleSeries = chart.addCandlestickSeries({
+    upColor: 'green',
+    borderUpColor: 'green',
+    wickUpColor: 'green',
+    downColor: 'red',
+    borderDownColor: 'red',
+    wickDownColor: 'red',
+});
+
+// Add line series for closing prices
+const lineSeries = chart.addLineSeries({
+    color: 'blue',
+});
+
+// Set data for both candlestick and line series
+candleSeries.setData(data);
+lineSeries.setData(data.map(item => ({
+    time: item.time,
+    value: item.close
+})));
+
+chart.timeScale().applyOptions({
+    timeVisible: true,        // Show time
+    secondsVisible: true,     // Show seconds
+    tickMarkFormatter: (time, tickMarkType, locale) => {
+        const date = new Date(time * 1000);
+        return date.toLocaleTimeString(locale, {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
         });
+    },
+});
 
-        document.getElementById('histogramSeriesBtn').addEventListener('click', () => {
-            switchSeries('histogram', chartData.value1);
-        });
+chart.priceScale('right').applyOptions({
+    scaleMargins: {
+        top: 0.2,
+        bottom: 0.2,
+    },
+});
 
-        // Toggle Value2 series
-        document.getElementById('toggleValue2Btn').addEventListener('click', () => {
-            if (value2Series) {
-                chart.removeSeries(value2Series);
-                value2Series = null;
-            } else {
-                value2Series = addSeriesForType(chartData.value2, 'red');
-            }
-        });
+chart.timeScale().applyOptions({
+    rightOffset: 5,
+    barSpacing: 6,
+    fixLeftEdge: true,
+});
 
-        // Toggle Value3 series
-        document.getElementById('toggleValue3Btn').addEventListener('click', () => {
-            if (value3Series) {
-                chart.removeSeries(value3Series);
-                value3Series = null;
-            } else {
-                value3Series = addSeriesForType(chartData.value3, 'green');
-            }
-        });
+chart.timeScale().fitContent();
 
-        function switchSeries(type, data) {
-            chart.removeSeries(mainSeries);
-            activeSeriesType = type;
-            mainSeries = addSeriesForType(data, 'blue');
-            updateActiveButton(type);
-        }
 
-        function addSeriesForType(data, color) {
-            let series;
-            if (activeSeriesType === 'line') {
-                series = chart.addLineSeries({ color: color });
-            } else if (activeSeriesType === 'histogram') {
-                series = chart.addHistogramSeries({ color: color });
-            }
-            series.setData(data);
-            return series;
-        }
-
-        function updateActiveButton(type) {
-            document.getElementById('lineSeriesBtn').classList.toggle('active', type === 'line');
-            document.getElementById('histogramSeriesBtn').classList.toggle('active', type === 'histogram');
-        }
     </script>
 </body>
 </html>
